@@ -21,17 +21,27 @@ public class PieceDeathMotionController : MonoBehaviour
     [SerializeField] private float dummyLinearDamping = 0.55f;
     [SerializeField] private float dummyAngularDamping = 0.35f;
 
-    public void Play(ChessPiece victim, Vector3 attackerPos, float lifeTime, Action onBeforeLaunch = null)
+    public void Play(
+        ChessPiece victim,
+        Vector3 attackerPos,
+        float lifeTime,
+        Action onBeforeLaunch = null,
+        float preLaunchTimingMultiplier = 1f)
     {
         if (victim == null)
         {
             return;
         }
 
-        StartCoroutine(BounceThenLaunch(victim, attackerPos, lifeTime, onBeforeLaunch));
+        StartCoroutine(BounceThenLaunch(victim, attackerPos, lifeTime, onBeforeLaunch, preLaunchTimingMultiplier));
     }
 
-    private IEnumerator BounceThenLaunch(ChessPiece victim, Vector3 attackerPos, float lifeTime, Action onBeforeLaunch)
+    private IEnumerator BounceThenLaunch(
+        ChessPiece victim,
+        Vector3 attackerPos,
+        float lifeTime,
+        Action onBeforeLaunch,
+        float preLaunchTimingMultiplier)
     {
         if (victim == null)
         {
@@ -57,9 +67,11 @@ public class PieceDeathMotionController : MonoBehaviour
         {
             toVictim = Vector3.right;
         }
+
+        float timingScale = Mathf.Max(0.01f, preLaunchTimingMultiplier);
         Vector3 launchDir = toVictim.normalized;
         Vector3 preImpactPos = basePos + launchDir * preLaunchForwardOffset;
-        yield return LerpVictimPosition(victim.transform, basePos, preImpactPos, preLaunchForwardDuration);
+        yield return LerpVictimPosition(victim.transform, basePos, preImpactPos, preLaunchForwardDuration * timingScale);
         if (victim == null)
         {
             yield break;
@@ -78,8 +90,8 @@ public class PieceDeathMotionController : MonoBehaviour
         for (int i = 0; i < bounceCount; i++)
         {
             Vector3 pulse = (i & 1) == 0 ? pulseSquash : pulseStretch;
-            yield return LerpVictimScale(victim.transform, baseScale, pulse, preLaunchBounceHalfDuration);
-            yield return LerpVictimScale(victim.transform, pulse, baseScale, preLaunchBounceHalfDuration);
+            yield return LerpVictimScale(victim.transform, baseScale, pulse, preLaunchBounceHalfDuration * timingScale);
+            yield return LerpVictimScale(victim.transform, pulse, baseScale, preLaunchBounceHalfDuration * timingScale);
         }
 
         if (victim == null)

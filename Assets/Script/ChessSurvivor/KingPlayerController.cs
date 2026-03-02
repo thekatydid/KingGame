@@ -11,6 +11,7 @@ public class KingPlayerController : MonoBehaviour
     [SerializeField] private ChessBoardManager board;
     [SerializeField] private TurnManager turnManager;
     [SerializeField] private KingQueenSkillController kingQueenSkill;
+    [SerializeField] private KingSkillRangeAttack kingSkillRangeAttack;
     [Header("Pick Up Visual")]
     [SerializeField] private float pickedHeightOffset = 0.55f;
     [SerializeField] private float pickedLerpSpeed = 14f;
@@ -58,6 +59,11 @@ public class KingPlayerController : MonoBehaviour
         if (kingQueenSkill == null)
         {
             kingQueenSkill = FindFirstObjectByType<KingQueenSkillController>();
+        }
+
+        if (kingSkillRangeAttack == null)
+        {
+            kingSkillRangeAttack = FindFirstObjectByType<KingSkillRangeAttack>();
         }
 
         if (turnManager.CurrentPhase != TurnPhase.PlayerTurn)
@@ -272,7 +278,11 @@ public class KingPlayerController : MonoBehaviour
                 return;
             }
         }
-        else if (!board.MovePiece(king, target))
+        else if (!board.MovePiece(
+                     king,
+                     target,
+                     -1f,
+                     () => turnManager.OnPlayerKingMoveResolved(king, target)))
         {
             return;
         }
@@ -417,13 +427,14 @@ public class KingPlayerController : MonoBehaviour
 
     private KingMoveEvaluation EvaluateKingMoveSafety(BoardCoord kingTarget, ChessPiece capturedEnemy = null)
     {
-        List<ChessPiece> immediateThreats = GetEnemiesThreateningKingInState(kingTarget, capturedEnemy, null, null, null);
+        HashSet<ChessPiece> preRemovedEnemies = BuildPreRemovedEnemiesForKingTarget(kingTarget, capturedEnemy);
+        List<ChessPiece> immediateThreats = GetEnemiesThreateningKingInState(kingTarget, capturedEnemy, preRemovedEnemies, null, null);
         if (immediateThreats.Count == 0)
         {
             return new KingMoveEvaluation(canEnterTile: true, needsSupport: false, superSave: false, plan: new List<SupportOrder>());
         }
 
-        if (!TryBuildSupportPlan(kingTarget, capturedEnemy, out List<SupportOrder> supportPlan))
+        if (!TryBuildSupportPlan(kingTarget, capturedEnemy, preRemovedEnemies, out List<SupportOrder> supportPlan))
         {
             return new KingMoveEvaluation(canEnterTile: false, needsSupport: false, superSave: false, plan: new List<SupportOrder>());
         }
@@ -432,11 +443,17 @@ public class KingPlayerController : MonoBehaviour
         return new KingMoveEvaluation(canEnterTile: true, needsSupport: true, superSave: isSuperSave, supportPlan);
     }
 
-    private bool TryBuildSupportPlan(BoardCoord kingTarget, ChessPiece capturedEnemy, out List<SupportOrder> plan)
+    private bool TryBuildSupportPlan(
+        BoardCoord kingTarget,
+        ChessPiece capturedEnemy,
+        HashSet<ChessPiece> preRemovedEnemies,
+        out List<SupportOrder> plan)
     {
         plan = new List<SupportOrder>();
         HashSet<ChessPiece> reservedAllies = new();
-        HashSet<ChessPiece> removedEnemies = new();
+        HashSet<ChessPiece> removedEnemies = preRemovedEnemies != null
+            ? new HashSet<ChessPiece>(preRemovedEnemies)
+            : new HashSet<ChessPiece>();
         Dictionary<ChessPiece, BoardCoord> movedAllies = new();
         return TryBuildSupportPlanRecursive(
             kingTarget,
@@ -446,6 +463,27 @@ public class KingPlayerController : MonoBehaviour
             movedAllies,
             plan,
             depth: 0);
+    }
+
+    private HashSet<ChessPiece> BuildPreRemovedEnemiesForKingTarget(BoardCoord kingTarget, ChessPiece capturedEnemy)
+    {
+        if (turnManager == null || kingQueenSkill == null || !kingQueenSkill.IsActive)
+        {
+            return null;
+        }
+
+        if (kingSkillRangeAttack == null)
+        {
+            kingSkillRangeAttack = FindFirstObjectByType<KingSkillRangeAttack>();
+        }
+
+        if (kingSkillRangeAttack == null || !kingSkillRangeAttack.IsRangeAttackActive)
+        {
+            return null;
+        }
+
+        HashSet<ChessPiece> removed = turnManager.CollectKingSkillRangeVictimsForState(kingTarget, capturedEnemy);
+        return removed.Count > 0 ? removed : null;
     }
 
     private List<ChessPiece> GetEnemiesThreateningKingInState(

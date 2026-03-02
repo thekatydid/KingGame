@@ -109,6 +109,11 @@ public class TurnManager : MonoBehaviour
     [Header("King Kill Cinematic")]
     [SerializeField] private KingKillCinematicController kingKillCinematic;
     [SerializeField] private KingQueenSkillController kingQueenSkillController;
+    [SerializeField] private KingSkillRangeAttack kingSkillRangeAttack;
+    [SerializeField] private GroundSpikeBurst kingSkillGroundSpikeBurst;
+    [SerializeField] private bool autoFindKingSkillGroundSpikeBurst = true;
+    [SerializeField] private Vector3 kingSkillGroundSpikeOffset = new(0f, 0.02f, 0f);
+    [SerializeField, Min(0)] private int kingSkillGroundSpikeTileRadius = 1;
     [SerializeField] private CinematicDirector cinematicDirector;
     [Header("Turn Start Alerts")]
     [SerializeField] private bool enableCheckAlerts = true;
@@ -356,6 +361,40 @@ public class TurnManager : MonoBehaviour
     {
         KingPiece = king;
         board?.ApplyDefaultFacing(KingPiece);
+    }
+
+    public HashSet<ChessPiece> CollectKingSkillRangeVictimsForState(BoardCoord center, ChessPiece excludeEnemy = null)
+    {
+        HashSet<ChessPiece> result = new();
+        KingSkillRangeAttack rangeAttack = ResolveKingSkillRangeAttack();
+        if (rangeAttack == null || !rangeAttack.IsRangeAttackActive || board == null)
+        {
+            return result;
+        }
+
+        rangeAttack.CollectVictims(board, center, result, excludeEnemy);
+        return result;
+    }
+
+    public void OnPlayerKingMoveResolved(ChessPiece attacker, BoardCoord targetCoord)
+    {
+        if (attacker == null || attacker != KingPiece)
+        {
+            return;
+        }
+
+        if (kingQueenSkillController == null)
+        {
+            kingQueenSkillController = FindFirstObjectByType<KingQueenSkillController>();
+        }
+
+        if (kingQueenSkillController == null || !kingQueenSkillController.IsActive)
+        {
+            return;
+        }
+
+        PlayKingSkillGroundSpikeBurst(targetCoord);
+        ApplyKingSkillRangeAttack(targetCoord, null);
     }
 
     public RuntimeState CaptureRuntimeState()
@@ -607,12 +646,25 @@ public class TurnManager : MonoBehaviour
             attacker,
             victimCoord,
             captureDuration,
-            () => SpawnKillEffects(victim, attacker.transform.position, Vector3.zero, isKingAttacker),
+            () =>
+            {
+                SpawnKillEffects(victim, attacker.transform.position, Vector3.zero, isKingAttacker);
+                if (isKingSkillActive)
+                {
+                    PlayKingSkillGroundSpikeBurst(victimCoord);
+                    ApplyKingSkillRangeAttack(victimCoord, victim);
+                }
+            },
             captureMoveStyle);
 
         if (!moved)
         {
             SpawnKillEffects(victim, attacker.transform.position, Vector3.zero, isKingAttacker);
+            if (isKingSkillActive)
+            {
+                PlayKingSkillGroundSpikeBurst(victimCoord);
+                ApplyKingSkillRangeAttack(victimCoord, victim);
+            }
             return false;
         }
 
@@ -1830,7 +1882,12 @@ public class TurnManager : MonoBehaviour
         };
     }
 
-    private void SpawnKillEffects(ChessPiece victim, Vector3 attackerPos, Vector3? delayedImpactPos, bool playDelayedFire = false)
+    private void SpawnKillEffects(
+        ChessPiece victim,
+        Vector3 attackerPos,
+        Vector3? delayedImpactPos,
+        bool playDelayedFire = false,
+        float preLaunchTimingMultiplier = 1f)
     {
         if (victim == null)
         {
@@ -1873,7 +1930,105 @@ public class TurnManager : MonoBehaviour
                     StartCoroutine(PlaySfxDelayedRealtime(kingCaptureFireSfxKey, kingCaptureFireDelay));
                 }
 
-            });
+            },
+            preLaunchTimingMultiplier);
+    }
+
+    private KingSkillRangeAttack ResolveKingSkillRangeAttack()
+    {
+        if (kingSkillRangeAttack == null)
+        {
+            kingSkillRangeAttack = FindFirstObjectByType<KingSkillRangeAttack>();
+        }
+
+        return kingSkillRangeAttack;
+    }
+
+    private GroundSpikeBurst ResolveKingSkillGroundSpikeBurst()
+    {
+        if (kingSkillGroundSpikeBurst == null && autoFindKingSkillGroundSpikeBurst)
+        {
+            kingSkillGroundSpikeBurst = FindFirstObjectByType<GroundSpikeBurst>();
+        }
+
+        return kingSkillGroundSpikeBurst;
+    }
+
+    private void PlayKingSkillGroundSpikeBurst(BoardCoord targetCoord)
+    {
+        GroundSpikeBurst burst = ResolveKingSkillGroundSpikeBurst();
+        if (burst == null || board == null)
+        {
+            return;
+        }
+
+        int tileRadius = Mathf.Max(0, kingSkillGroundSpikeTileRadius);
+        List<Vector3> tilePositions = new();
+        for (int y = targetCoord.y - tileRadius; y <= targetCoord.y + tileRadius; y++)
+        {
+            for (int x = targetCoord.x - tileRadius; x <= targetCoord.x + tileRadius; x++)
+            {
+                BoardCoord c = new(x, y);
+                if (!board.IsInside(c))
+                {
+                    continue;
+                }
+
+                tilePositions.Add(board.CoordToWorld(c) + kingSkillGroundSpikeOffset);
+            }
+        }
+
+        Vector3 centerPos = board.CoordToWorld(targetCoord) + kingSkillGroundSpikeOffset;
+        if (tilePositions.Count > 0)
+        {
+            burst.PlayAtPositions(centerPos, Vector3.up, tilePositions);
+        }
+        else
+        {
+            burst.Play(centerPos, Vector3.up);
+        }
+    }
+
+    private void ApplyKingSkillRangeAttack(BoardCoord center, ChessPiece excludeEnemy)
+    {
+        KingSkillRangeAttack rangeAttack = ResolveKingSkillRangeAttack();
+        if (rangeAttack == null || !rangeAttack.IsRangeAttackActive || board == null)
+        {
+            return;
+        }
+
+        HashSet<ChessPiece> splashVictims = new();
+        rangeAttack.CollectVictims(board, center, splashVictims, excludeEnemy);
+        if (splashVictims.Count == 0)
+        {
+            return;
+        }
+
+        float splashTimingMultiplier = rangeAttack.SplashPreLaunchTimingMultiplier;
+        foreach (ChessPiece victim in splashVictims)
+        {
+            if (victim == null || victim.Team != Team.Enemy)
+            {
+                continue;
+            }
+
+            Vector3 attackerPos = KingPiece != null
+                ? KingPiece.transform.position
+                : victim.transform.position;
+
+            board.DetachPiece(victim);
+            SpawnKillEffects(
+                victim,
+                attackerPos,
+                Vector3.zero,
+                playDelayedFire: false,
+                preLaunchTimingMultiplier: splashTimingMultiplier);
+            experience?.AddExp(2);
+            AddTotalKillCount(1);
+            AddKingKillCount(1);
+        }
+
+        TryHandleFinalWaveClear();
     }
 
     private IEnumerator PlaySfxDelayedRealtime(string sfxKey, float delaySeconds)
