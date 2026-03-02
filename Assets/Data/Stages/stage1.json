@@ -24,7 +24,7 @@
     },
     {
       "waveName": "Wave 3",
-      "waveTurn": 24,
+      "waveTurn": 20,
       "entries": [
         { "turn": 1, "piece": "Knight",  "count": 12 },
         { "turn": 0, "piece": "Pawn",  "count": 12 }

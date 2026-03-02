@@ -67,6 +67,29 @@ public class KingSkillRangeAttack : MonoBehaviour
         }
     }
 
+    public void CollectRangeCoords(ChessBoardManager board, BoardCoord center, HashSet<BoardCoord> result)
+    {
+        if (board == null || result == null || !IsRangeAttackActive)
+        {
+            return;
+        }
+
+        int radius = Mathf.Max(1, rangeRadius);
+        for (int y = center.y - radius; y <= center.y + radius; y++)
+        {
+            for (int x = center.x - radius; x <= center.x + radius; x++)
+            {
+                BoardCoord c = new(x, y);
+                if (!board.IsInside(c))
+                {
+                    continue;
+                }
+
+                result.Add(c);
+            }
+        }
+    }
+
     private void Awake()
     {
         EnsureReferences();

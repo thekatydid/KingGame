@@ -5,6 +5,7 @@ public class EnemyHoverThreatPreview : MonoBehaviour
 {
     [SerializeField] private Camera mainCamera;
     [SerializeField] private ChessBoardManager board;
+    [SerializeField] private KingPlayerController kingPlayerController;
 
     private ChessPiece lastHoveredEnemy;
 
@@ -25,12 +26,29 @@ public class EnemyHoverThreatPreview : MonoBehaviour
         {
             board = FindFirstObjectByType<ChessBoardManager>();
         }
+
+        if (kingPlayerController == null)
+        {
+            kingPlayerController = FindFirstObjectByType<KingPlayerController>();
+        }
     }
 
     private void Update()
     {
         if (mainCamera == null || board == null)
         {
+            return;
+        }
+
+        if (kingPlayerController == null)
+        {
+            kingPlayerController = FindFirstObjectByType<KingPlayerController>();
+        }
+
+        // While dragging/picking king, KingPlayerController owns threat preview rendering.
+        if (kingPlayerController != null && kingPlayerController.IsKingPicked)
+        {
+            lastHoveredEnemy = null;
             return;
         }
 

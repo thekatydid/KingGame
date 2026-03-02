@@ -29,6 +29,7 @@ public class KingPlayerController : MonoBehaviour
     private Quaternion groundedRotation = Quaternion.identity;
     private bool groundedRotationInitialized;
     private Transform kingIconRoot;
+    public bool IsKingPicked => picked;
 
     public void Initialize(Camera cam, ChessBoardManager boardManager, TurnManager manager, ChessPiece kingPiece)
     {
@@ -116,11 +117,13 @@ public class KingPlayerController : MonoBehaviour
             List<BoardCoord> enemyDanger = BuildBlockedDangerForKing();
             board.ShowMoveHighlights(GetKingMoveCandidates(), enemyDanger);
             board.ShowCaptureBorders(GetCapturableTargets());
+            UpdateSkillRangePreviewUnderMouse();
             UpdateSupportPreviewUnderMouse();
             SetKingIconVisible(false);
         }
         else
         {
+            board.ClearEnemyThreatPreview();
             UpdateKingHoverIcon();
             if (!turnManager.HasForcedSupportOrders)
             {
@@ -278,16 +281,31 @@ public class KingPlayerController : MonoBehaviour
                 return;
             }
         }
-        else if (!board.MovePiece(
-                     king,
-                     target,
-                     -1f,
-                     () => turnManager.OnPlayerKingMoveResolved(king, target)))
-        {
-            return;
-        }
         else
         {
+            bool isSkillDiveMove = kingQueenSkill != null && kingQueenSkill.IsActive;
+            PieceMoveStyle moveStyle = isSkillDiveMove ? PieceMoveStyle.SkillDive : PieceMoveStyle.Slide;
+            float durationOverride = isSkillDiveMove
+                ? turnManager.GetKingSkillDiveDuration(king.Coord, target)
+                : -1f;
+
+            if (!board.MovePiece(
+                    king,
+                    target,
+                    durationOverride,
+                    () => turnManager.OnPlayerKingMoveResolved(king, target),
+                    moveStyle))
+            {
+                return;
+            }
+
+            if (isSkillDiveMove)
+            {
+                // Logical AoE kill must be resolved right away, before auto-turn starts.
+                float splashVisualDelay = Mathf.Max(0f, durationOverride * 1.2f);
+                turnManager.ResolveKingSkillRangeAttackImmediate(target, null, splashVisualDelay);
+            }
+
             SoundManager.Instance?.PlaySfx(kingDropSfxKey);
         }
 
@@ -1373,6 +1391,7 @@ public class KingPlayerController : MonoBehaviour
         picked = false;
         board.ClearHighlights();
         board.ClearCaptureBorders();
+        board.ClearEnemyThreatPreview();
         if (cancelOnly || !turnManager.HasForcedSupportOrders)
         {
             turnManager.ClearForcedSupportPreview();
@@ -1395,6 +1414,7 @@ public class KingPlayerController : MonoBehaviour
         picked = false;
         board.ClearHighlights();
         board.ClearCaptureBorders();
+        board.ClearEnemyThreatPreview();
         if (!turnManager.HasForcedSupportOrders)
         {
             turnManager.ClearForcedSupportPreview();
@@ -1481,6 +1501,32 @@ public class KingPlayerController : MonoBehaviour
         }
 
         turnManager.PreviewForcedSupportAllies(allies, useSuperSaveLabel: false, targetEnemies: enemies, targetCoords: targets);
+    }
+
+    private void UpdateSkillRangePreviewUnderMouse()
+    {
+        if (!picked || mainCamera == null || board == null || kingSkillRangeAttack == null || !kingSkillRangeAttack.IsRangeAttackActive)
+        {
+            board.ClearEnemyThreatPreview();
+            return;
+        }
+
+        Ray ray = mainCamera.ScreenPointToRay(GetPointerPosition());
+        if (!board.TryGetCoordFromRay(ray, out BoardCoord target))
+        {
+            board.ClearEnemyThreatPreview();
+            return;
+        }
+
+        if (target.Equals(king.Coord))
+        {
+            board.ClearEnemyThreatPreview();
+            return;
+        }
+
+        HashSet<BoardCoord> rangeCoords = new();
+        kingSkillRangeAttack.CollectRangeCoords(board, target, rangeCoords);
+        board.ShowEnemyThreatPreview(new List<BoardCoord>(rangeCoords));
     }
 
     private List<BoardCoord> GetKingMoveCandidates()

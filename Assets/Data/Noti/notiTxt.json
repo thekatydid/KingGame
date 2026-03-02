@@ -76,7 +76,7 @@
     },
     {
       "key": "AfterFirstKingSkill",
-      "text": "앞으로 3턴간 모든 기물의 움직임을 취할 수 있습니다.",
+      "text": "앞으로 2턴간 공격과 이동이 강화됩니다.",
       "duration": 2.4
     },
     {
