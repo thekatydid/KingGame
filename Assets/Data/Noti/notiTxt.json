@@ -1,0 +1,135 @@
+{
+  "entries": [
+    {
+      "key": "GameStart",
+      "text": "중앙의 왕을 클릭하여 움직여봅시다.",
+      "duration": 2.0
+    },
+    {
+      "key": "FirstKill",
+      "text": "잘하셨습니다!",
+      "duration": 2.0,
+      "colorKey": "nice"
+
+    },
+    {
+      "key": "FirstKill2",
+      "text": "'킹'으로 적 기물을 많이 잡는 것이 목표입니다.",
+      "duration": 2.0
+    },
+    {
+      "key": "FirstSummon",
+      "text": "좋습니다. 이제 보드를 클릭하여 \n기물을 소환할 수 있습니다.",
+      "duration": 2.0
+    },
+    {
+      "key": "SecondTurn",
+      "text": "각 기물에 마우스를 올리면\n다음 턴 행동을 예측할 수 있습니다.",
+      "duration": 2.0
+    },
+    {
+      "key": "Check",
+      "text": "Check!",
+      "duration": 1.2,
+      "colorKey": "Danger"
+    },
+    {
+      "key": "CheckInfo",
+      "text": "이동할 공간이 없을때는 체크입니다.",
+      "duration": 1.6
+    },
+    {
+      "key": "CheckRescue",
+      "text": "훌륭합니다!",
+      "duration": 1.2
+    },
+    {
+      "key": "CheckRescueInfo",
+      "text": "Check에서 기물을 이용해 CheckMate를 벗어날 수 있습니다.",
+      "duration": 2.1
+    },
+    {
+      "key": "CheckMate",
+      "text": "CheckMate!",
+      "duration": 2.0,
+      "colorKey": "CheckMate"
+    },
+    {
+      "key": "CheckMateInfo",
+      "text": "이동할 공간도, 소환할 기물도 없을때는 체크메이트입니다.",
+      "duration": 2.0
+    },
+    {
+      "key": "CheckMateInfo2",
+      "text": "체크메이트는 게임 오버로 이어집니다.",
+      "duration": 1.8
+    },
+    {
+      "key": "GameClear",
+      "text": "축하합니다. 당신은 천재!",
+      "duration": 2.0
+    },
+    {
+      "key": "FirstKingSkillReady",
+      "text": "순조롭게 적을 처치하셨군요. \n하단의 활성화된 아이콘을 눌러봅시다.",
+      "duration": 2.4
+    },
+    {
+      "key": "AfterFirstKingSkill",
+      "text": "앞으로 3턴간 모든 기물의 움직임을 취할 수 있습니다.",
+      "duration": 2.4
+    },
+    {
+      "key": "Wave2Info1",
+      "text": "정해진 턴에 기물들이 연달아 생성되는 Wave가 존재합니다.",
+      "duration": 2.4
+    },
+    {
+      "key": "Wave2Info2",
+      "text": "다음 단계의 wave 일수록 적 기물이 더욱 복잡하고 어려워집니다.",
+      "duration": 2.4
+    }
+  ],
+  "sequences": [
+    {
+      "key": "FirstKillSequence",
+      "gap": 0.25,
+      "items": [
+        { "key": "FirstKill" },
+        { "key": "FirstKill2" }
+      ]
+    },
+    {
+      "key": "Wave2Sequence",
+      "gap": 0.25,
+      "items": [
+        { "key": "Wave2Info1" },
+        { "key": "Wave2Info2" }
+      ]
+    },
+    {
+      "key": "CheckSequence",
+      "gap": 0.2,
+      "items": [
+        { "key": "Check" },
+        { "key": "CheckInfo" }
+      ]
+    },
+    {
+      "key": "CheckMateInfoSequence",
+      "gap": 0.2,
+      "items": [
+        { "key": "CheckMateInfo" },
+        { "key": "CheckMateInfo2" }
+      ]
+    },
+    {
+      "key": "CheckRescueSequence",
+      "gap": 0.2,
+      "items": [
+        { "key": "CheckRescue" },
+        { "key": "CheckRescueInfo" }
+      ]
+    }
+  ]
+}

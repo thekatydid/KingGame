@@ -1,0 +1,46 @@
+{
+  "stageId": "stage1",
+  "waves": [
+    {
+      "waveName": "Wave 1",
+      "waveTurn": 0,
+      "entries": [
+        { "turn": 0, "piece": "Pawn",  "count": 4 },
+        { "turn": 1, "piece": "Rook", "count": 3 },
+        { "turn": 1, "piece": "Bishop", "count": 3 },
+        { "turn": 0, "piece": "Knight", "count": 4 }
+      ]
+    },
+    {
+      "waveName": "Wave 2",
+      "waveTurn": 12,
+      "entries": [
+        { "turn": 0, "piece": "Pawn",  "count": 6 },
+        { "turn": 0, "piece": "Queen", "count": 2 },
+        { "turn": 1, "piece": "Rook",  "count": 4 },
+        { "turn": 1, "piece": "Knight",  "count": 4 },
+        { "turn": 1, "piece": "Bishop", "count": 2 }
+      ]
+    },
+    {
+      "waveName": "Wave 3",
+      "waveTurn": 20,
+      "entries": [
+        { "turn": 1, "piece": "Knight",  "count": 12 },
+        { "turn": 0, "piece": "Pawn",  "count": 12 }
+      ]
+    },
+    {
+      "waveName": "Final Wave",
+      "waveTurn": 30,
+      "entries": [
+        { "turn": 1, "piece": "Bishop",  "count": 6 },
+        { "turn": 1, "piece": "Rook",  "count": 6 },
+        { "turn": 0, "piece": "Queen",  "count": 4 },
+        { "turn": 0, "piece": "Pawn",  "count": 12 }
+      ]
+    }
+    
+    
+  ]
+}
