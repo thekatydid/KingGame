@@ -30,6 +30,10 @@ public class SoundManager : MonoBehaviour
     private Coroutine bgmTransitionCoroutine;
     private readonly List<AudioSource> sfxVoices = new();
     private int sfxVoiceCursor;
+    private bool pendingBgmSeek;
+    private bool pendingBgmSeekAppliedWhilePlaying;
+    private string pendingBgmSeekKey;
+    private float pendingBgmSeekTime;
 
     private void Awake()
     {
@@ -54,6 +58,11 @@ public class SoundManager : MonoBehaviour
         {
             Instance = null;
         }
+    }
+
+    private void Update()
+    {
+        TryApplyPendingBgmSeek();
     }
 
     private void Reset()
@@ -132,6 +141,7 @@ public class SoundManager : MonoBehaviour
 
         currentBgmKey = string.Empty;
         currentBgmEntryVolume = 1f;
+        ClearPendingBgmSeek();
         bgmPlayer.Stop();
         bgmPlayer.clip = null;
     }
@@ -413,15 +423,13 @@ public class SoundManager : MonoBehaviour
             bgmPlayer.Play();
             if (startTimeSeconds >= 0f && bgmPlayer.clip != null)
             {
-                float targetTime = startTimeSeconds;
-                if (bgmPlayer.clip.length > 0f)
-                {
-                    targetTime = bgmPlayer.loop
-                        ? Mathf.Repeat(startTimeSeconds, bgmPlayer.clip.length)
-                        : Mathf.Clamp(startTimeSeconds, 0f, Mathf.Max(0f, bgmPlayer.clip.length - 0.01f));
-                }
-
+                float targetTime = NormalizeBgmSeekTime(startTimeSeconds);
                 bgmPlayer.time = targetTime;
+                SetPendingBgmSeek(key, targetTime);
+            }
+            else
+            {
+                ClearPendingBgmSeek();
             }
         }
     }
@@ -453,5 +461,76 @@ public class SoundManager : MonoBehaviour
 
         bgmPlayer.volume = targetVolume;
         bgmTransitionCoroutine = null;
+    }
+
+    private void SetPendingBgmSeek(string key, float targetTime)
+    {
+        pendingBgmSeek = true;
+        pendingBgmSeekAppliedWhilePlaying = false;
+        pendingBgmSeekKey = key;
+        pendingBgmSeekTime = Mathf.Max(0f, targetTime);
+    }
+
+    private void ClearPendingBgmSeek()
+    {
+        pendingBgmSeek = false;
+        pendingBgmSeekAppliedWhilePlaying = false;
+        pendingBgmSeekKey = string.Empty;
+        pendingBgmSeekTime = 0f;
+    }
+
+    private float NormalizeBgmSeekTime(float sourceTime)
+    {
+        if (bgmPlayer == null || bgmPlayer.clip == null)
+        {
+            return Mathf.Max(0f, sourceTime);
+        }
+
+        if (bgmPlayer.clip.length <= 0f)
+        {
+            return Mathf.Max(0f, sourceTime);
+        }
+
+        return bgmPlayer.loop
+            ? Mathf.Repeat(sourceTime, bgmPlayer.clip.length)
+            : Mathf.Clamp(sourceTime, 0f, Mathf.Max(0f, bgmPlayer.clip.length - 0.01f));
+    }
+
+    private void TryApplyPendingBgmSeek()
+    {
+        if (!pendingBgmSeek || bgmPlayer == null || bgmPlayer.clip == null)
+        {
+            return;
+        }
+
+        if (!string.Equals(currentBgmKey, pendingBgmSeekKey, System.StringComparison.Ordinal))
+        {
+            ClearPendingBgmSeek();
+            return;
+        }
+
+        float targetTime = NormalizeBgmSeekTime(pendingBgmSeekTime);
+        if (!pendingBgmSeekAppliedWhilePlaying)
+        {
+            if (Mathf.Abs(bgmPlayer.time - targetTime) > 0.02f || bgmPlayer.isPlaying)
+            {
+                bgmPlayer.time = targetTime;
+            }
+
+            if (bgmPlayer.isPlaying)
+            {
+                pendingBgmSeekAppliedWhilePlaying = true;
+            }
+
+            return;
+        }
+
+        if (Mathf.Abs(bgmPlayer.time - targetTime) <= 0.5f)
+        {
+            ClearPendingBgmSeek();
+            return;
+        }
+
+        bgmPlayer.time = targetTime;
     }
 }
