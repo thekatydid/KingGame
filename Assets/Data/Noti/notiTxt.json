@@ -45,7 +45,7 @@
     },
     {
       "key": "CheckRescueInfo",
-      "text": "Check에서 기물을 이용해 CheckMate를 벗어날 수 있습니다.",
+      "text": "Check에서 기물을 이용해\nCheckMate를 벗어날 수 있습니다.",
       "duration": 2.1
     },
     {
@@ -56,7 +56,7 @@
     },
     {
       "key": "CheckMateInfo",
-      "text": "이동할 공간도, 소환할 기물도 없을때는 체크메이트입니다.",
+      "text": "이동할 공간도, 소환할 기물도 없을때는\n체크메이트입니다.",
       "duration": 2.0
     },
     {
@@ -86,7 +86,7 @@
     },
     {
       "key": "Wave2Info2",
-      "text": "다음 단계의 wave 일수록 적 기물이 더욱 복잡하고 어려워집니다.",
+      "text": "다음 단계의 wave 일수록\n적 기물이 더욱 복잡하고 어려워집니다.",
       "duration": 2.4
     }
   ],

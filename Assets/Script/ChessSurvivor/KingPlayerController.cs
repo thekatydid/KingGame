@@ -123,7 +123,6 @@ public class KingPlayerController : MonoBehaviour
         }
         else
         {
-            board.ClearEnemyThreatPreview();
             UpdateKingHoverIcon();
             if (!turnManager.HasForcedSupportOrders)
             {
