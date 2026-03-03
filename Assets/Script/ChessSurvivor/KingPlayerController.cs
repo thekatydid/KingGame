@@ -11,6 +11,7 @@ public class KingPlayerController : MonoBehaviour
     [SerializeField] private ChessBoardManager board;
     [SerializeField] private TurnManager turnManager;
     [SerializeField] private KingQueenSkillController kingQueenSkill;
+    [SerializeField] private KingSkillRangeAttack kingSkillRangeAttack;
     [Header("Pick Up Visual")]
     [SerializeField] private float pickedHeightOffset = 0.55f;
     [SerializeField] private float pickedLerpSpeed = 14f;
@@ -28,6 +29,7 @@ public class KingPlayerController : MonoBehaviour
     private Quaternion groundedRotation = Quaternion.identity;
     private bool groundedRotationInitialized;
     private Transform kingIconRoot;
+    public bool IsKingPicked => picked;
 
     public void Initialize(Camera cam, ChessBoardManager boardManager, TurnManager manager, ChessPiece kingPiece)
     {
@@ -58,6 +60,11 @@ public class KingPlayerController : MonoBehaviour
         if (kingQueenSkill == null)
         {
             kingQueenSkill = FindFirstObjectByType<KingQueenSkillController>();
+        }
+
+        if (kingSkillRangeAttack == null)
+        {
+            kingSkillRangeAttack = FindFirstObjectByType<KingSkillRangeAttack>();
         }
 
         if (turnManager.CurrentPhase != TurnPhase.PlayerTurn)
@@ -110,6 +117,7 @@ public class KingPlayerController : MonoBehaviour
             List<BoardCoord> enemyDanger = BuildBlockedDangerForKing();
             board.ShowMoveHighlights(GetKingMoveCandidates(), enemyDanger);
             board.ShowCaptureBorders(GetCapturableTargets());
+            UpdateSkillRangePreviewUnderMouse();
             UpdateSupportPreviewUnderMouse();
             SetKingIconVisible(false);
         }
@@ -272,12 +280,31 @@ public class KingPlayerController : MonoBehaviour
                 return;
             }
         }
-        else if (!board.MovePiece(king, target))
-        {
-            return;
-        }
         else
         {
+            bool isSkillDiveMove = kingQueenSkill != null && kingQueenSkill.IsActive;
+            PieceMoveStyle moveStyle = isSkillDiveMove ? PieceMoveStyle.SkillDive : PieceMoveStyle.Slide;
+            float durationOverride = isSkillDiveMove
+                ? turnManager.GetKingSkillDiveDuration(king.Coord, target)
+                : -1f;
+
+            if (!board.MovePiece(
+                    king,
+                    target,
+                    durationOverride,
+                    () => turnManager.OnPlayerKingMoveResolved(king, target),
+                    moveStyle))
+            {
+                return;
+            }
+
+            if (isSkillDiveMove)
+            {
+                // Logical AoE kill must be resolved right away, before auto-turn starts.
+                float splashVisualDelay = Mathf.Max(0f, durationOverride * 1.2f);
+                turnManager.ResolveKingSkillRangeAttackImmediate(target, null, splashVisualDelay);
+            }
+
             SoundManager.Instance?.PlaySfx(kingDropSfxKey);
         }
 
@@ -417,13 +444,14 @@ public class KingPlayerController : MonoBehaviour
 
     private KingMoveEvaluation EvaluateKingMoveSafety(BoardCoord kingTarget, ChessPiece capturedEnemy = null)
     {
-        List<ChessPiece> immediateThreats = GetEnemiesThreateningKingInState(kingTarget, capturedEnemy, null, null, null);
+        HashSet<ChessPiece> preRemovedEnemies = BuildPreRemovedEnemiesForKingTarget(kingTarget, capturedEnemy);
+        List<ChessPiece> immediateThreats = GetEnemiesThreateningKingInState(kingTarget, capturedEnemy, preRemovedEnemies, null, null);
         if (immediateThreats.Count == 0)
         {
             return new KingMoveEvaluation(canEnterTile: true, needsSupport: false, superSave: false, plan: new List<SupportOrder>());
         }
 
-        if (!TryBuildSupportPlan(kingTarget, capturedEnemy, out List<SupportOrder> supportPlan))
+        if (!TryBuildSupportPlan(kingTarget, capturedEnemy, preRemovedEnemies, out List<SupportOrder> supportPlan))
         {
             return new KingMoveEvaluation(canEnterTile: false, needsSupport: false, superSave: false, plan: new List<SupportOrder>());
         }
@@ -432,11 +460,17 @@ public class KingPlayerController : MonoBehaviour
         return new KingMoveEvaluation(canEnterTile: true, needsSupport: true, superSave: isSuperSave, supportPlan);
     }
 
-    private bool TryBuildSupportPlan(BoardCoord kingTarget, ChessPiece capturedEnemy, out List<SupportOrder> plan)
+    private bool TryBuildSupportPlan(
+        BoardCoord kingTarget,
+        ChessPiece capturedEnemy,
+        HashSet<ChessPiece> preRemovedEnemies,
+        out List<SupportOrder> plan)
     {
         plan = new List<SupportOrder>();
         HashSet<ChessPiece> reservedAllies = new();
-        HashSet<ChessPiece> removedEnemies = new();
+        HashSet<ChessPiece> removedEnemies = preRemovedEnemies != null
+            ? new HashSet<ChessPiece>(preRemovedEnemies)
+            : new HashSet<ChessPiece>();
         Dictionary<ChessPiece, BoardCoord> movedAllies = new();
         return TryBuildSupportPlanRecursive(
             kingTarget,
@@ -446,6 +480,27 @@ public class KingPlayerController : MonoBehaviour
             movedAllies,
             plan,
             depth: 0);
+    }
+
+    private HashSet<ChessPiece> BuildPreRemovedEnemiesForKingTarget(BoardCoord kingTarget, ChessPiece capturedEnemy)
+    {
+        if (turnManager == null || kingQueenSkill == null || !kingQueenSkill.IsActive)
+        {
+            return null;
+        }
+
+        if (kingSkillRangeAttack == null)
+        {
+            kingSkillRangeAttack = FindFirstObjectByType<KingSkillRangeAttack>();
+        }
+
+        if (kingSkillRangeAttack == null || !kingSkillRangeAttack.IsRangeAttackActive)
+        {
+            return null;
+        }
+
+        HashSet<ChessPiece> removed = turnManager.CollectKingSkillRangeVictimsForState(kingTarget, capturedEnemy);
+        return removed.Count > 0 ? removed : null;
     }
 
     private List<ChessPiece> GetEnemiesThreateningKingInState(
@@ -1335,6 +1390,7 @@ public class KingPlayerController : MonoBehaviour
         picked = false;
         board.ClearHighlights();
         board.ClearCaptureBorders();
+        board.ClearEnemyThreatPreview();
         if (cancelOnly || !turnManager.HasForcedSupportOrders)
         {
             turnManager.ClearForcedSupportPreview();
@@ -1357,6 +1413,7 @@ public class KingPlayerController : MonoBehaviour
         picked = false;
         board.ClearHighlights();
         board.ClearCaptureBorders();
+        board.ClearEnemyThreatPreview();
         if (!turnManager.HasForcedSupportOrders)
         {
             turnManager.ClearForcedSupportPreview();
@@ -1443,6 +1500,32 @@ public class KingPlayerController : MonoBehaviour
         }
 
         turnManager.PreviewForcedSupportAllies(allies, useSuperSaveLabel: false, targetEnemies: enemies, targetCoords: targets);
+    }
+
+    private void UpdateSkillRangePreviewUnderMouse()
+    {
+        if (!picked || mainCamera == null || board == null || kingSkillRangeAttack == null || !kingSkillRangeAttack.IsRangeAttackActive)
+        {
+            board.ClearEnemyThreatPreview();
+            return;
+        }
+
+        Ray ray = mainCamera.ScreenPointToRay(GetPointerPosition());
+        if (!board.TryGetCoordFromRay(ray, out BoardCoord target))
+        {
+            board.ClearEnemyThreatPreview();
+            return;
+        }
+
+        if (target.Equals(king.Coord))
+        {
+            board.ClearEnemyThreatPreview();
+            return;
+        }
+
+        HashSet<BoardCoord> rangeCoords = new();
+        kingSkillRangeAttack.CollectRangeCoords(board, target, rangeCoords);
+        board.ShowEnemyThreatPreview(new List<BoardCoord>(rangeCoords));
     }
 
     private List<BoardCoord> GetKingMoveCandidates()

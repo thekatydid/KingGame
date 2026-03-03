@@ -13,7 +13,7 @@
     },
     {
       "waveName": "Wave 2",
-      "waveTurn": 12,
+      "waveTurn": 10,
       "entries": [
         { "turn": 0, "piece": "Pawn",  "count": 6 },
         { "turn": 0, "piece": "Queen", "count": 2 },

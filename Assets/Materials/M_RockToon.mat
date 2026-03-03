@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-4857931116500957412
+MonoBehaviour:
+  m_ObjectHideFlags: 11
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Editor::UnityEditor.Rendering.Universal.AssetVersion
+  version: 10
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_RockToon
+  m_Shader: {fileID: 4800000, guid: 9ccd11be55eb94cf6b73d097d60c2986, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _BaseMap:
+        m_Texture: {fileID: 2800000, guid: 1d09ce42b55e74c1e9652e5d38e9681f, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _AmbientStrength: 0.24
+    - _OutlineWidth: 0.044
+    - _RimPower: 3.5
+    - _RimStrength: 0.1
+    - _ShadowSoftness: 0.045
+    - _ShadowStrength: 0.75
+    - _ShadowThreshold: 0.56
+    m_Colors:
+    - _BaseColor: {r: 0.81960785, g: 0.32941177, b: 0.35796264, a: 1}
+    - _OutlineColor: {r: 0.14, g: 0.12, b: 0.1, a: 1}
+    - _RimColor: {r: 0.78, g: 0.74, b: 0.66, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
